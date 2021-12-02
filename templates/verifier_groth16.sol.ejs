@@ -226,13 +226,36 @@ contract Verifier {
         )) return 1;
         return 0;
     }
-    /// @return r  bool true if proof is valid
+
+    function toUint256(bytes memory _bytes) internal pure returns (uint256) {
+        require(_bytes.length >= 32, "toUint256_outOfBounds");
+        uint256 tempUint;
+        assembly {
+            tempUint := mload(add(add(_bytes, 0x20), 0))
+        }
+        return tempUint;
+    }
+
     function verifyProof(
-            uint[2] memory a,
-            uint[2][2] memory b,
-            uint[2] memory c,
-            uint[<%=IC.length-1%>] memory input
-        ) public view returns (bool r) {
+        bytes calldata proof, 
+        uint[<%=IC.length-1%>] memory input
+    ) public view returns (bool) {
+        uint[2] memory a = [toUint256(proof[0:32]), toUint256(proof[32:64])];
+        uint[2][2] memory b = [
+            [toUint256(proof[64:96]), toUint256(proof[96:128])], 
+            [toUint256(proof[128:160]), toUint256(proof[160:192])]
+        ];
+        uint[2] memory c = [toUint256(proof[192:224]), toUint256(proof[224:256])];
+        return _verifyProof(a, b, c, input);
+    }
+
+    /// @return r  bool true if proof is valid
+    function _verifyProof(
+        uint[2] memory a,
+        uint[2][2] memory b,
+        uint[2] memory c,
+        uint[<%=IC.length-1%>] memory input
+    ) internal view returns (bool r) {
         Proof memory proof;
         proof.A = Pairing.G1Point(a[0], a[1]);
         proof.B = Pairing.G2Point([b[0][0], b[0][1]], [b[1][0], b[1][1]]);
